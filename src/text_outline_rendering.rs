@@ -1,3 +1,6 @@
+#![allow(clippy::type_complexity, clippy::too_many_arguments)]
+use core::f32;
+
 use bevy::prelude::*;
 use bevy::render::sync_world::TemporaryRenderEntity;
 use bevy::render::Extract;
@@ -111,7 +114,7 @@ pub fn extract_ui_text_outlines(
             Entity,
             &ComputedNode,
             &ComputedUiTargetCamera,
-            &GlobalTransform,
+            &UiGlobalTransform,
             &InheritedVisibility,
             Option<&CalculatedClip>,
             &TextLayoutInfo,
@@ -127,7 +130,7 @@ pub fn extract_ui_text_outlines(
     let ExtractedUiNodes { glyphs, uinodes, .. } = &mut *extracted_uinodes;
 
     let mut camera_mapper = camera_map.get_mapper();
-    for (entity, uinode, target, global_transform, inherited_visibility, clip, text_layout_info, outline) in
+    for (entity, uinode, target, ui_global_transform, inherited_visibility, clip, text_layout_info, outline) in
         &uinode_query
     {
         // Skip if not visible or if size is set to zero (e.g. when a parent is set to `Display::None`)
@@ -148,12 +151,11 @@ pub fn extract_ui_text_outlines(
             &texture_atlases,
             &mut aa_glyph_cache,
             |offset, position, rect| {
-                let transform =
-                    global_transform.affine() * Mat4::from_translation((-0.5 * uinode.size() + offset).extend(0.));
+                let transform = position + (-0.5 * uinode.size() + offset);
                 ExtractedGlyph {
-                    translation: position.extend(0.).xy(),
+                    translation: transform,
                     rect,
-                    color: todo!(),
+                    color: Color::BLACK.into(),
                 }
             },
             |glyph| {
@@ -167,8 +169,8 @@ pub fn extract_ui_text_outlines(
                     extracted_camera_entity,
                     item: ExtractedUiItem::Glyphs { range: start..(start + len) },
                     main_entity: entity.into(),
-                    z_order: default(),
-                    transform: default(),
+                    z_order: uinode.stack_index as f32,
+                    transform: (*ui_global_transform).into(),
                 });
             },
         );
@@ -222,7 +224,7 @@ pub fn extract_2d_text_outlines(
         );
 
         let top_left = (Anchor::TOP_LEFT.as_vec() - anchor.as_vec()) * size;
-        let transform = *global_transform * GlobalTransform::from_translation(top_left.extend(0.)) * scaling;
+        let transform = *global_transform * GlobalTransform::from_translation(top_left.extend(-f32::EPSILON)) * scaling;
 
         spawn_text_outline_shadows::<ExtractedSlice>(
             &mut start,
@@ -235,7 +237,7 @@ pub fn extract_2d_text_outlines(
             |offset, position, rect| {
                 // TODO: change to -position.y in bevy v0.17 ?
                 ExtractedSlice {
-                    offset: Vec2::new(position.x, position.y - 2. * size.y) + offset,
+                    offset: Vec2::new(position.x, -position.y) + offset,
                     rect,
                     size: rect.size(),
                 }

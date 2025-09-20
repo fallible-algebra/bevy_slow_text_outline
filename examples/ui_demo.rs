@@ -8,7 +8,7 @@ fn spawn_ui(mut c: Commands)
     c.spawn(Camera2d);
     c.spawn((
         Node{ padding: UiRect::horizontal(Val::Px(10.0)), ..default() },
-        BackgroundColor(Color::WHITE),
+        BackgroundColor(Color::from(LinearRgba::new(0.5, 0.5, 0.5, 1.))),
         children![
             (
                 Node{ margin: UiRect::top(Val::Px(10.0)), ..default() },
