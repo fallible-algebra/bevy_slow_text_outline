@@ -235,7 +235,6 @@ pub fn extract_2d_text_outlines(
             &texture_atlases,
             &mut aa_slice_cache,
             |offset, position, rect| {
-                // TODO: change to -position.y in bevy v0.17 ?
                 ExtractedSlice {
                     offset: Vec2::new(position.x, -position.y) + offset,
                     rect,
