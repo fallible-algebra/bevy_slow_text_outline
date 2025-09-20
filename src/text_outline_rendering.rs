@@ -2,10 +2,13 @@ use bevy::prelude::*;
 use bevy::render::sync_world::TemporaryRenderEntity;
 use bevy::render::Extract;
 use bevy::sprite::{
-    Anchor, ExtractedSlice, ExtractedSlices, ExtractedSprite, ExtractedSpriteKind, ExtractedSprites,
+    Anchor,
+};
+use bevy::sprite_render::{
+    ExtractedSlice, ExtractedSlices, ExtractedSprite, ExtractedSpriteKind, ExtractedSprites,
 };
 use bevy::text::{PositionedGlyph, TextBounds, TextLayoutInfo};
-use bevy::ui::{ExtractedGlyph, ExtractedUiItem, ExtractedUiNode, ExtractedUiNodes, UiCameraMap};
+use bevy::ui_render::{ExtractedGlyph, ExtractedUiItem, ExtractedUiNode, ExtractedUiNodes, UiCameraMap};
 use bevy::window::PrimaryWindow;
 
 use crate::prelude::TextOutline;
@@ -36,7 +39,7 @@ fn spawn_text_outline_shadows<G>(
 
     for (i, PositionedGlyph { position, atlas_info, .. }) in text_layout_info.glyphs.iter().enumerate() {
         let rect = texture_atlases
-            .get(&atlas_info.texture_atlas)
+            .get(atlas_info.texture_atlas)
             .unwrap()
             .textures[atlas_info.location.glyph_index]
             .as_rect();
@@ -69,7 +72,7 @@ fn spawn_text_outline_shadows<G>(
             .is_none_or(|info| info.atlas_info.texture != atlas_info.texture)
         {
             if len > 0 {
-                (add_batch)(rect, color, atlas_info.texture.id(), *start, len);
+                (add_batch)(rect, color, atlas_info.texture, *start, len);
                 *start += len;
                 len = 0;
             }
@@ -80,7 +83,7 @@ fn spawn_text_outline_shadows<G>(
             }
 
             if aa_len > 0 {
-                (add_batch)(rect, aa_color, atlas_info.texture.id(), *start, aa_len);
+                (add_batch)(rect, aa_color, atlas_info.texture, *start, aa_len);
                 *start += aa_len;
             }
         }
@@ -107,7 +110,7 @@ pub fn extract_ui_text_outlines(
         Query<(
             Entity,
             &ComputedNode,
-            &ComputedNodeTarget,
+            &ComputedUiTargetCamera,
             &GlobalTransform,
             &InheritedVisibility,
             Option<&CalculatedClip>,
@@ -148,8 +151,9 @@ pub fn extract_ui_text_outlines(
                 let transform =
                     global_transform.affine() * Mat4::from_translation((-0.5 * uinode.size() + offset).extend(0.));
                 ExtractedGlyph {
-                    transform: transform * Mat4::from_translation(position.extend(0.)),
+                    translation: position.extend(0.).xy(),
                     rect,
+                    color: todo!(),
                 }
             },
             |glyph| {
@@ -158,14 +162,13 @@ pub fn extract_ui_text_outlines(
             |rect, color, image, start, len| {
                 uinodes.push(ExtractedUiNode {
                     render_entity: commands.spawn(TemporaryRenderEntity).id(),
-                    stack_index: uinode.stack_index,
-                    color,
                     image,
                     clip: clip.map(|clip| clip.clip),
                     extracted_camera_entity,
-                    rect,
                     item: ExtractedUiItem::Glyphs { range: start..(start + len) },
                     main_entity: entity.into(),
+                    z_order: default(),
+                    transform: default(),
                 });
             },
         );
@@ -218,7 +221,7 @@ pub fn extract_2d_text_outlines(
             text_bounds.height.unwrap_or(text_layout_info.size.y),
         );
 
-        let top_left = (Anchor::TopLeft.as_vec() - anchor.as_vec()) * size;
+        let top_left = (Anchor::TOP_LEFT.as_vec() - anchor.as_vec()) * size;
         let transform = *global_transform * GlobalTransform::from_translation(top_left.extend(0.)) * scaling;
 
         spawn_text_outline_shadows::<ExtractedSlice>(
