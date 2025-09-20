@@ -26,7 +26,7 @@ fn spawn_text_outline_shadows<G>(
     text_layout_info: &TextLayoutInfo,
     texture_atlases: &Assets<TextureAtlasLayout>,
     aa_cache: &mut Vec<G>,
-    make_glyph: impl Fn(Vec2, Vec2, Rect) -> G,
+    make_glyph: impl Fn(Vec2, Vec2, Rect, LinearRgba) -> G,
     mut add_glyph: impl FnMut(G),
     mut add_batch: impl FnMut(Rect, LinearRgba, AssetId<Image>, usize, usize),
 )
@@ -58,7 +58,7 @@ fn spawn_text_outline_shadows<G>(
 
                 let offset = Vec2 { x: offset_x as f32, y: offset_y as f32 };
 
-                let glyph = (make_glyph)(offset, *position, rect);
+                let glyph = (make_glyph)(offset, *position, rect, color);
 
                 if aa_factor != 1.0 && offset_y.abs() == height {
                     aa_cache.push(glyph);
@@ -150,12 +150,12 @@ pub fn extract_ui_text_outlines(
             text_layout_info,
             &texture_atlases,
             &mut aa_glyph_cache,
-            |offset, position, rect| {
+            |offset, position, rect, color: LinearRgba| {
                 let transform = position + (-0.5 * uinode.size() + offset);
                 ExtractedGlyph {
                     translation: transform,
                     rect,
-                    color: Color::BLACK.into(),
+                    color,
                 }
             },
             |glyph| {
@@ -234,7 +234,7 @@ pub fn extract_2d_text_outlines(
             text_layout_info,
             &texture_atlases,
             &mut aa_slice_cache,
-            |offset, position, rect| {
+            |offset, position, rect, color| {
                 ExtractedSlice {
                     offset: Vec2::new(position.x, -position.y) + offset,
                     rect,
