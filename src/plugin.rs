@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, sprite_render::extract_text2d_sprite};
 use bevy::render::RenderApp;
 use bevy::sprite::SpriteSystems;
 use bevy::ui_render::RenderUiSystems;
@@ -33,6 +33,7 @@ impl Plugin for SlowTextOutlinePlugin
                 ExtractSchedule,
                 extract_2d_text_outlines
                     .after(SpriteSystems::ExtractSprites)
+                    .before(extract_text2d_sprite)
             );
     }
 }
