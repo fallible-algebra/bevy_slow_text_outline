@@ -26,4 +26,5 @@ The current implementation is naive and has catastrophic performance degredation
 
 | `bevy` | `bevy_slow_text_outline` |
 |-------|-------------------|
-| 0.16  | 0.1.0 - main     |
+| 0.17  | 0.3 - main     |
+| 0.16  | 0.1 - 0.2     |
