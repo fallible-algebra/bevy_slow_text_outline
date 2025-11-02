@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0
+
+- Update to bevy v0.17.
+
 ## 0.2.0
 
 - Add support for 2d text.

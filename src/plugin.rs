@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 use bevy::render::RenderApp;
-use bevy::sprite::SpriteSystem;
-use bevy::text::extract_text2d_sprite;
-use bevy::ui::RenderUiSystem;
+use bevy::sprite::SpriteSystems;
+use bevy::sprite_render::extract_text2d_sprite;
+use bevy::ui_render::RenderUiSystems;
 
 use crate::text_outline_rendering::{extract_2d_text_outlines, extract_ui_text_outlines, TextOutlineMaxWidth};
 
@@ -27,13 +27,13 @@ impl Plugin for SlowTextOutlinePlugin
                 ExtractSchedule,
                 // Outlines last so they render above shadows.
                 extract_ui_text_outlines
-                    .after(bevy::ui::extract_text_shadows)
-                    .in_set(RenderUiSystem::ExtractTextShadows),
+                    .after(bevy::ui_render::extract_text_shadows)
+                    .in_set(RenderUiSystems::ExtractTextShadows),
             )
             .add_systems(
                 ExtractSchedule,
                 extract_2d_text_outlines
-                    .after(SpriteSystem::ExtractSprites)
+                    .after(SpriteSystems::ExtractSprites)
                     .before(extract_text2d_sprite),
             );
     }

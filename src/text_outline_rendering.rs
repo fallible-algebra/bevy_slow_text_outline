@@ -1,11 +1,15 @@
+use bevy::math::Affine2;
 use bevy::prelude::*;
 use bevy::render::sync_world::TemporaryRenderEntity;
 use bevy::render::Extract;
-use bevy::sprite::{
-    Anchor, ExtractedSlice, ExtractedSlices, ExtractedSprite, ExtractedSpriteKind, ExtractedSprites,
+use bevy::sprite::Anchor;
+use bevy::sprite_render::{
+    ExtractedSlice, ExtractedSlices, ExtractedSprite, ExtractedSpriteKind, ExtractedSprites,
 };
 use bevy::text::{PositionedGlyph, TextBounds, TextLayoutInfo};
-use bevy::ui::{ExtractedGlyph, ExtractedUiItem, ExtractedUiNode, ExtractedUiNodes, UiCameraMap};
+use bevy::ui_render::{
+    stack_z_offsets, ExtractedGlyph, ExtractedUiItem, ExtractedUiNode, ExtractedUiNodes, UiCameraMap,
+};
 use bevy::window::PrimaryWindow;
 
 use crate::prelude::TextOutline;
@@ -20,9 +24,9 @@ fn spawn_text_outline_shadows<G>(
     text_layout_info: &TextLayoutInfo,
     texture_atlases: &Assets<TextureAtlasLayout>,
     aa_cache: &mut Vec<G>,
-    make_glyph: impl Fn(Vec2, Vec2, Rect) -> G,
+    make_glyph: impl Fn(LinearRgba, Vec2, Vec2, Rect) -> G,
     mut add_glyph: impl FnMut(G),
-    mut add_batch: impl FnMut(Rect, LinearRgba, AssetId<Image>, usize, usize),
+    mut add_batch: impl FnMut(LinearRgba, AssetId<Image>, usize, usize),
 )
 {
     let preclamped_width = (outline.width * scale_factor).ceil() as i32;
@@ -36,7 +40,7 @@ fn spawn_text_outline_shadows<G>(
 
     for (i, PositionedGlyph { position, atlas_info, .. }) in text_layout_info.glyphs.iter().enumerate() {
         let rect = texture_atlases
-            .get(&atlas_info.texture_atlas)
+            .get(atlas_info.texture_atlas)
             .unwrap()
             .textures[atlas_info.location.glyph_index]
             .as_rect();
@@ -52,11 +56,11 @@ fn spawn_text_outline_shadows<G>(
 
                 let offset = Vec2 { x: offset_x as f32, y: offset_y as f32 };
 
-                let glyph = (make_glyph)(offset, *position, rect);
-
                 if aa_factor != 1.0 && offset_y.abs() == height {
-                    aa_cache.push(glyph);
+                    let aa_glyph = (make_glyph)(aa_color, offset, *position, rect);
+                    aa_cache.push(aa_glyph);
                 } else {
+                    let glyph = (make_glyph)(color, offset, *position, rect);
                     (add_glyph)(glyph);
                     len += 1;
                 }
@@ -69,7 +73,7 @@ fn spawn_text_outline_shadows<G>(
             .is_none_or(|info| info.atlas_info.texture != atlas_info.texture)
         {
             if len > 0 {
-                (add_batch)(rect, color, atlas_info.texture.id(), *start, len);
+                (add_batch)(color, atlas_info.texture, *start, len);
                 *start += len;
                 len = 0;
             }
@@ -80,7 +84,7 @@ fn spawn_text_outline_shadows<G>(
             }
 
             if aa_len > 0 {
-                (add_batch)(rect, aa_color, atlas_info.texture.id(), *start, aa_len);
+                (add_batch)(aa_color, atlas_info.texture, *start, aa_len);
                 *start += aa_len;
             }
         }
@@ -107,8 +111,8 @@ pub fn extract_ui_text_outlines(
         Query<(
             Entity,
             &ComputedNode,
-            &ComputedNodeTarget,
-            &GlobalTransform,
+            &ComputedUiTargetCamera,
+            &UiGlobalTransform,
             &InheritedVisibility,
             Option<&CalculatedClip>,
             &TextLayoutInfo,
@@ -136,6 +140,8 @@ pub fn extract_ui_text_outlines(
             continue;
         };
 
+        let transform = Affine2::from(*global_transform) * Affine2::from_translation(-0.5 * uinode.size());
+
         spawn_text_outline_shadows::<ExtractedGlyph>(
             &mut start,
             1.0 / uinode.inverse_scale_factor(),
@@ -144,26 +150,23 @@ pub fn extract_ui_text_outlines(
             text_layout_info,
             &texture_atlases,
             &mut aa_glyph_cache,
-            |offset, position, rect| {
-                let transform =
-                    global_transform.affine() * Mat4::from_translation((-0.5 * uinode.size() + offset).extend(0.));
-                ExtractedGlyph {
-                    transform: transform * Mat4::from_translation(position.extend(0.)),
-                    rect,
-                }
+            |color, offset, position, rect| {
+                // let transform =
+                //     global_transform.affine() * Mat4::from_translation((-0.5 * uinode.size() +
+                // offset).extend(0.));
+                ExtractedGlyph { color, translation: position + offset, rect }
             },
             |glyph| {
                 glyphs.push(glyph);
             },
-            |rect, color, image, start, len| {
+            |_color, image, start, len| {
                 uinodes.push(ExtractedUiNode {
                     render_entity: commands.spawn(TemporaryRenderEntity).id(),
-                    stack_index: uinode.stack_index,
-                    color,
+                    z_order: uinode.stack_index as f32 + stack_z_offsets::TEXT,
                     image,
                     clip: clip.map(|clip| clip.clip),
                     extracted_camera_entity,
-                    rect,
+                    transform,
                     item: ExtractedUiItem::Glyphs { range: start..(start + len) },
                     main_entity: entity.into(),
                 });
@@ -218,7 +221,7 @@ pub fn extract_2d_text_outlines(
             text_bounds.height.unwrap_or(text_layout_info.size.y),
         );
 
-        let top_left = (Anchor::TopLeft.as_vec() - anchor.as_vec()) * size;
+        let top_left = (Anchor::TOP_LEFT.as_vec() - anchor.as_vec()) * size;
         let transform = *global_transform * GlobalTransform::from_translation(top_left.extend(0.)) * scaling;
 
         spawn_text_outline_shadows::<ExtractedSlice>(
@@ -229,18 +232,15 @@ pub fn extract_2d_text_outlines(
             text_layout_info,
             &texture_atlases,
             &mut aa_slice_cache,
-            |offset, position, rect| {
-                // TODO: change to -position.y in bevy v0.17 ?
-                ExtractedSlice {
-                    offset: Vec2::new(position.x, position.y - 2. * size.y) + offset,
-                    rect,
-                    size: rect.size(),
-                }
+            |_, offset, position, rect| ExtractedSlice {
+                offset: Vec2::new(position.x, -position.y) + offset,
+                rect,
+                size: rect.size(),
             },
             |glyph| {
                 extracted_slices.slices.push(glyph);
             },
-            |_rect, color, image, start, len| {
+            |color, image, start, len| {
                 let render_entity = commands.spawn(TemporaryRenderEntity).id();
                 extracted_sprites.sprites.push(ExtractedSprite {
                     main_entity,

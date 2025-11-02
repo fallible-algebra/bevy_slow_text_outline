@@ -18,7 +18,7 @@ fn spawn_ui(mut c: Commands)
             ),
             (
                 Node{height:Val::Px(50.0), border:UiRect::left(Val::Px(1.0)), margin:UiRect::horizontal(Val::Px(5.0)), ..default()},
-                BorderColor(Color::BLACK)
+                BorderColor::from(Color::BLACK)
             ),
             (
                 Node{ margin: UiRect::top(Val::Px(10.0)), ..default() },
@@ -28,7 +28,7 @@ fn spawn_ui(mut c: Commands)
             ),
             (
                 Node{height:Val::Px(50.0), border:UiRect::left(Val::Px(1.0)), margin:UiRect::horizontal(Val::Px(5.0)), ..default()},
-                BorderColor(Color::BLACK)
+                BorderColor::from(Color::BLACK)
             ),
             (
                 Node{ margin: UiRect::top(Val::Px(10.0)), ..default() },

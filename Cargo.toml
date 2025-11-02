@@ -1,10 +1,10 @@
 [package]
 name = "bevy_slow_text_outline"
-description = "UI text outlines for the bevy game engine"
+description = "Text outlines for the bevy game engine"
 authors = ["koe <ukoe@protonmail.com>"]
 version = "0.2.0"
 edition = "2021"
-keywords = ["gamedev", "text", "ui"]
+keywords = ["gamedev", "text", "ui", "2d"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/UkoeHB/bevy_slow_text_outline"
@@ -26,7 +26,7 @@ serde = ["dep:serde", "bevy/serialize"]
 serde = { version = "1.0", optional = true, features = ["derive"] }
 
 [dependencies.bevy]
-version = "0.16"
+version = "0.17"
 default-features = false
 features = [
   "std",
@@ -35,11 +35,12 @@ features = [
   "bevy_sprite",
   "bevy_text",
   "bevy_ui",
+  "bevy_ui_render",
   "bevy_window",
 ]
 
 [dev-dependencies.bevy]
-version = "0.16"
+version = "0.17"
 default-features = false
 features = [
   "std",
@@ -47,6 +48,7 @@ features = [
   "bevy_render",
   "bevy_text",
   "bevy_ui",
+  "bevy_ui_render",
   "bevy_window",
   "bevy_winit",
   "default_font"
